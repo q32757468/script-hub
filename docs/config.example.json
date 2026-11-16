@@ -1,0 +1,32 @@
+{
+  "version": 1,
+  "settings": {
+    "launchAtLogin": false
+  },
+  "tasks": [
+    {
+      "id": "example-node-server",
+      "name": "Node 本地服务",
+      "command": {
+        "mode": "direct",
+        "text": "node server.js --port ${port}"
+      },
+      "workingDirectory": "${project}",
+      "environment": {
+        "NODE_ENV": "development"
+      },
+      "variables": {
+        "port": {
+          "value": "3000",
+          "allowEmpty": false
+        },
+        "project": {
+          "value": "C:\\path\\to\\your-project",
+          "allowEmpty": false
+        }
+      },
+      "autoStart": false
+    }
+  ],
+  "files": []
+}
