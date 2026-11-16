@@ -140,6 +140,8 @@ function App() {
   const [baseline, setBaseline] = useState("");
   const [taskDialog, setTaskDialog] = useState<"edit" | "logs" | null>(null);
   const [query, setQuery] = useState("");
+  const [searchOpen, setSearchOpen] = useState(false);
+  const searchToggleRef = useRef<HTMLButtonElement>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
@@ -491,9 +493,6 @@ function App() {
             <span className="live-dot" />
             <span className="muted">{totalActive} 个运行实例</span>
           </div>
-          <button className="link-button" onClick={() => openDirectory()}>
-            打开配置目录 <Icon name="arrow" size={14} />
-          </button>
           <small>Script Hub · v0.1.0</small>
         </div>
       </aside>
@@ -721,16 +720,47 @@ function App() {
                 <section className="task-list glass">
                   <div className="section-title">
                     <h2>我的任务</h2>
-                    <span className="muted">{data.config.tasks.length}</span>
-                  </div>
-                  <div className="search">
-                    <Icon name="search" size={16} />
-                    <input
-                      aria-label="搜索任务"
-                      placeholder="搜索任务名称或命令…"
-                      value={query}
-                      onChange={(e) => setQuery(e.target.value)}
-                    />
+                    <div
+                      className={`task-search${searchOpen ? " expanded" : ""}`}
+                    >
+                      {searchOpen && (
+                        <input
+                          id="task-search"
+                          autoFocus
+                          type="search"
+                          aria-label="搜索任务"
+                          placeholder="搜索任务名称或命令…"
+                          value={query}
+                          onChange={(e) => setQuery(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Escape") {
+                              e.preventDefault();
+                              setSearchOpen(false);
+                              setQuery("");
+                              searchToggleRef.current?.focus();
+                            }
+                          }}
+                        />
+                      )}
+                      <button
+                        ref={searchToggleRef}
+                        type="button"
+                        className="icon-button task-search-toggle"
+                        aria-label={searchOpen ? "收起搜索" : "搜索任务"}
+                        title={searchOpen ? "收起搜索" : "搜索任务"}
+                        aria-expanded={searchOpen}
+                        aria-controls={searchOpen ? "task-search" : undefined}
+                        onClick={() => {
+                          setSearchOpen(!searchOpen);
+                          if (searchOpen) setQuery("");
+                        }}
+                      >
+                        <Icon
+                          name={searchOpen ? "close" : "search"}
+                          size={16}
+                        />
+                      </button>
+                    </div>
                   </div>
                   <div className="task-rows" role="list" aria-label="任务列表">
                     {data.config.tasks
@@ -828,7 +858,6 @@ function App() {
                           .includes(query.toLowerCase()),
                       ) && <p className="empty-small">没有匹配的任务</p>}
                   </div>
-                  <div className="list-footer">同一任务同时仅运行一个实例</div>
                 </section>
               </div>
             </>

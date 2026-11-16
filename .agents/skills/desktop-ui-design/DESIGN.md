@@ -41,10 +41,10 @@ typography:
     fontWeight: 650
     lineHeight: 1.4
 rounded:
-  sm: 9px
-  md: 12px
-  lg: 18px
-  xl: 20px
+  sm: 7px
+  md: 9px
+  lg: 14px
+  xl: 16px
   window: 0px
 spacing:
   xs: 4px
@@ -69,17 +69,17 @@ components:
     backgroundColor: "{colors.glass-strong}"
     textColor: "{colors.blue-deep}"
     rounded: "{rounded.md}"
-    padding: "11px 13px"
+    padding: "7px 11px"
   primary-action:
     backgroundColor: "{colors.blue}"
     textColor: "{colors.white}"
     rounded: "{rounded.sm}"
-    padding: "9px 13px"
+    padding: "5px 10px"
 ---
 
 ## Overview
 
-This is a reusable visual system for desktop interfaces. It should feel calm, clear, spacious, and quietly warm. Use a light blue foundation, translucent white surfaces, and restrained blue accents. The desktop shell has a persistent left navigation and a broad content area. Keep information density moderate and group related content into clear cards. Do not imply a specific brand, organization, or product.
+This is a reusable visual system for desktop interfaces. It should feel calm, clear, compact, and quietly warm. Use a light blue foundation, translucent white surfaces, and restrained blue accents. The desktop shell has a persistent left navigation and a broad content area. Favor compact desktop controls and list spacing while preserving readable text and clear content groups. Do not imply a specific brand, organization, or product.
 
 The visual style is light glassmorphism. Frosted surfaces sit over a softly colored background; blur and transparency should add depth without reducing text clarity. Keep the Chinese interface friendly and direct. Use short labels, quiet supporting text, and clear hierarchy rather than decorative copy.
 
@@ -106,7 +106,7 @@ On narrow screens, scale the greeting down while keeping body and control labels
 
 ## Layout
 
-Fill the entire viewport with the application shell, with no outer margin, border, radius, or maximum width. At desktop widths, use a 216px sidebar and a flexible main column. Keep the sidebar and each page header stationary. Place the page title, description, and primary action above an independently scrolling content area; the document itself must not scroll. Use a 4px spacing rhythm, with 12–16px gaps inside groups and 24–40px between major sections.
+Fill the entire viewport with the application shell, with no outer margin, border, radius, or maximum width. At desktop widths, use a 200px sidebar and a flexible main column, with about 22px page padding. Keep the sidebar and each page header stationary. Place the page title, description, and primary action above an independently scrolling content area; the document itself must not scroll. Use a 4px spacing rhythm, with 6–12px gaps inside groups and 14–24px between major sections. Task rows use 10–12px vertical padding and 6–8px separation. Preserve body and metadata font sizes when increasing density.
 
 For overview-style screens, arrange summary metrics in four equal columns. Pair a chart with a summary card, then place a dense list beside supporting content. Keep item names and status visible at a glance. Treat these as adaptable layout patterns, not required product sections. Below 1100px, reduce the sidebar width and use two metric columns. Below 760px, turn the sidebar into a stationary top navigation and stack the content panels. Preserve readable spacing and avoid horizontal scrolling.
 
@@ -118,7 +118,7 @@ Avoid stacking many shadows on small controls. The chart area and status chips s
 
 ## Shapes
 
-Keep the outer desktop window square and flush with the viewport. Use an 18–20px radius for content cards, and 9–12px for buttons, inputs, badges, and navigation rows. Avatars and icon tiles can use compact rounded squares; reserve circles for avatars and chart points. Keep outlines thin and consistent.
+Keep the outer desktop window square and flush with the viewport. Use a 12–16px radius for content cards, and 6–9px for buttons, inputs, badges, and navigation rows. Avatars and icon tiles can use compact rounded squares; reserve circles for avatars and chart points. Keep outlines thin and consistent.
 
 ## Components
 
@@ -128,8 +128,8 @@ Keep the outer desktop window square and flush with the viewport. Use an 18–20
 - **Content card:** White glass surface with a compact title, muted subtitle, and consistent inner padding. Align neighboring card headings on the same baseline.
 - **Progress bar:** Thin rounded track with a blue, mint, or coral fill according to the item context. Include a visible numeric percentage.
 - **Dense list row:** Optional leading mark and title on the left, compact metadata and progress in the middle, and a text status chip on the right. Allow the row to simplify on small screens.
-- **Primary action:** Use a blue treatment with white text. Secondary actions should be transparent or lightly outlined.
-- **Search and form fields:** Use a translucent white fill, fine outline, compact rounded corners, and a clear focus ring. Keep labels visible when a field has a value.
+- **Primary action:** Use a blue treatment with white text. Secondary actions should be transparent or lightly outlined. Ordinary buttons are about 33px tall, with a 14px label and 5px vertical padding; page primary actions may use 6px vertical padding.
+- **Search and form fields:** Use a translucent white fill, fine outline, compact rounded corners, and a clear focus ring. Fields are about 35px tall with 6px vertical padding. Keep labels visible when a field has a value.
 - **Modal:** Centered pale glass panel over a blurred dim scrim fixed to the viewport. Mount overlays outside the application shell so ancestor blur cannot change their containing block. Lock background scrolling while open and allow tall dialogs to scroll internally. Keep its title, fields, and primary action in a clear vertical sequence.
 
 Interactive controls need visible hover, focus, and active states. Maintain text contrast on translucent backgrounds; do not communicate selection or status using color alone.
