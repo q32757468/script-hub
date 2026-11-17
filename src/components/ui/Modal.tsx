@@ -37,6 +37,8 @@ export function Modal({
   const lastChildren = useRef(children);
   const exited = useRef(onExited);
   exited.current = onExited;
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
   if (open) lastChildren.current = children;
 
   useEffect(() => {
@@ -77,16 +79,25 @@ export function Modal({
   useEffect(() => {
     if (!open || !mounted || !active) return;
     const dialog = dialogRef.current;
-    const controls = () =>
-      Array.from(dialog?.querySelectorAll<HTMLElement>(focusable) ?? []);
-    (controls()[0] ?? dialog)?.focus();
+    if (!dialog) return;
+
+    if (!dialog.contains(document.activeElement)) {
+      const controls = Array.from(
+        dialog.querySelectorAll<HTMLElement>(focusable),
+      );
+      const auto = dialog.querySelector<HTMLElement>("[autofocus]");
+      (auto ?? controls[0] ?? dialog).focus();
+    }
+
     function keydown(event: KeyboardEvent) {
       if (event.key === "Escape") {
         event.preventDefault();
         event.stopImmediatePropagation();
-        onClose();
+        onCloseRef.current();
       } else if (event.key === "Tab") {
-        const items = controls();
+        const items = Array.from(
+          dialog?.querySelectorAll<HTMLElement>(focusable) ?? [],
+        );
         const first = items[0];
         const last = items[items.length - 1];
         if (!first) {
@@ -103,7 +114,7 @@ export function Modal({
     }
     document.addEventListener("keydown", keydown);
     return () => document.removeEventListener("keydown", keydown);
-  }, [open, mounted, active, onClose]);
+  }, [open, mounted, active]);
 
   if (!mounted) return null;
 
@@ -119,7 +130,7 @@ export function Modal({
           backdropClose &&
           event.target === event.currentTarget
         )
-          onClose();
+          onCloseRef.current();
       }}
     >
       <section

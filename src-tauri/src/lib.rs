@@ -222,6 +222,30 @@ fn quit_app(app: tauri::AppHandle) {
     request_exit(app);
 }
 
+#[tauri::command]
+fn window_minimize(window: tauri::WebviewWindow) -> Result<()> {
+    window.minimize().map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn window_toggle_maximize(window: tauri::WebviewWindow) -> Result<()> {
+    if window.is_maximized().map_err(|e| e.to_string())? {
+        window.unmaximize().map_err(|e| e.to_string())
+    } else {
+        window.maximize().map_err(|e| e.to_string())
+    }
+}
+
+#[tauri::command]
+fn window_close(window: tauri::WebviewWindow) -> Result<()> {
+    window.close().map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn window_is_maximized(window: tauri::WebviewWindow) -> Result<bool> {
+    window.is_maximized().map_err(|e| e.to_string())
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     #[cfg(windows)]
@@ -327,7 +351,11 @@ pub fn run() {
             clear_output,
             clear_history,
             cleanup_run,
-            quit_app
+            quit_app,
+            window_minimize,
+            window_toggle_maximize,
+            window_close,
+            window_is_maximized
         ])
         .build(tauri::generate_context!())
         .expect("无法初始化 Script Hub")

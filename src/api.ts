@@ -11,6 +11,30 @@ export function call<T = void>(
     );
   return invoke<T>(command, args);
 }
+
+export async function windowMinimize(): Promise<void> {
+  if (!desktop) return;
+  return call("window_minimize");
+}
+
+export async function windowToggleMaximize(): Promise<void> {
+  if (!desktop) return;
+  return call("window_toggle_maximize");
+}
+
+export async function windowClose(): Promise<void> {
+  if (!desktop) return;
+  return call("window_close");
+}
+
+export async function windowIsMaximized(): Promise<boolean> {
+  if (!desktop) return false;
+  try {
+    return await call<boolean>("window_is_maximized");
+  } catch {
+    return false;
+  }
+}
 export const emptySnapshot: Snapshot = {
   config: {
     version: 1,

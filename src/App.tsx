@@ -17,6 +17,7 @@ import {
   type Snapshot,
 } from "./domain";
 import { Badge, Button, Card, Icon, MetricCard, Modal } from "./components/ui";
+import { TitleBar } from "./components/TitleBar";
 
 type Page = "tasks" | "files" | "settings";
 type Confirmation = {
@@ -66,13 +67,26 @@ function App() {
   const refresh = useCallback(async () => {
     if (!desktop) return emptySnapshot;
     const next = await call<Snapshot>("snapshot");
-    setData((previous) => ({
-      ...next,
-      config:
-        JSON.stringify(previous.config) === JSON.stringify(next.config)
-          ? previous.config
-          : next.config,
-    }));
+    setData((previous) => {
+      const configIdentical =
+        JSON.stringify(previous.config) === JSON.stringify(next.config);
+      const runsIdentical =
+        JSON.stringify(previous.runs) === JSON.stringify(next.runs);
+      if (
+        configIdentical &&
+        runsIdentical &&
+        previous.root === next.root &&
+        previous.configError === next.configError &&
+        previous.runtimeError === next.runtimeError
+      ) {
+        return previous;
+      }
+      return {
+        ...next,
+        config: configIdentical ? previous.config : next.config,
+        runs: runsIdentical ? previous.runs : next.runs,
+      };
+    });
     return next;
   }, []);
   const loadTask = (task: Task | null) => {
@@ -174,6 +188,12 @@ function App() {
     if (busy) return;
     guarded(() => setTaskDialog(null));
   }
+  const closeConfirm = useCallback(() => {
+    setConfirm(null);
+  }, []);
+  const closePendingConfig = useCallback(() => {
+    setPendingConfig(null);
+  }, []);
   function openTaskDialog(task: Task, dialog: "edit" | "logs") {
     setError("");
     setNotice("");
@@ -300,605 +320,628 @@ function App() {
 
   return (
     <div className="app-shell">
-      <aside
-        className="sidebar"
-        inert={!!taskDialog || !!confirm || !!pendingConfig}
-      >
-        <div className="brand">
-          <span className="brand-icon">
-            <Icon name="terminal" size={24} />
-          </span>
-          <div>
-            Script Hub<small>本机任务工作台</small>
-          </div>
-        </div>
-        <div className="nav-caption">工作空间</div>
-        <nav>
-          {(["tasks", "files", "settings"] as Page[]).map((p) => (
-            <button
-              key={p}
-              className={page === p ? "nav-item selected" : "nav-item"}
-              onClick={() =>
-                guarded(() => {
-                  setPage(p);
-                  if (p !== "tasks") loadTask(null);
-                })
-              }
-            >
-              <Icon name={p} />
-              <span>
-                {{ tasks: "任务", files: "导入文件", settings: "应用设置" }[p]}
-              </span>
-              {p === "tasks" && <b>{data.config.tasks.length}</b>}
-            </button>
-          ))}
-        </nav>
-        <div className="sidebar-bottom">
-          <div className="local-state">
-            <span className="live-dot" />
-            <span className="muted">{totalActive} 个运行实例</span>
-          </div>
-          <small>Script Hub · v0.1.0</small>
-        </div>
-      </aside>
-      <main
-        className="main-content"
-        inert={!!taskDialog || !!confirm || !!pendingConfig}
-      >
-        <header className="page-header">
-          <div>
-            <div className="eyebrow">
-              SCRIPT HUB /{" "}
-              {
-                { tasks: "WORKSPACE", files: "FILES", settings: "PREFERENCES" }[
-                  page
-                ]
-              }
+      <TitleBar />
+      <div className="app-body">
+        <aside
+          className="sidebar"
+          inert={!!taskDialog || !!confirm || !!pendingConfig}
+        >
+          <div className="brand" data-tauri-drag-region>
+            <span className="brand-icon">
+              <Icon name="terminal" size={24} />
+            </span>
+            <div>
+              Script Hub<small>本机任务工作台</small>
             </div>
-            <h1>
-              {
-                {
-                  tasks: "让本机任务，井然有序。",
-                  files: "管理你的导入文件。",
-                  settings: "按你的习惯工作。",
-                }[page]
-              }
-            </h1>
-            <p>
-              {
-                {
-                  tasks: "保存命令、管理运行，专注正在做的事。",
-                  files: "导入文件拥有独立副本，可供多个任务引用。",
-                  settings: "配置保存在用户主目录，随时可以直接编辑。",
-                }[page]
-              }
-            </p>
           </div>
-          {page === "tasks" && (
-            <Button
-              icon="plus"
-              variant="primary"
-              size="page"
-              disabled={!canCreateTask}
-              onClick={() => guarded(newTask)}
-            >
-              新增任务
-            </Button>
-          )}
-          {page === "files" && (
-            <Button
-              icon="plus"
-              variant="primary"
-              size="page"
-              disabled={busy || !desktop || !!data.configError}
-              onClick={() => void work(() => importFile())}
-            >
-              导入文件
-            </Button>
-          )}
-        </header>
-        <div className="page-body" key={page}>
-          {!desktop && (
-            <div className="banner info">
-              当前为浏览器界面预览。运行、文件和配置管理请使用桌面应用：
-              <code>pnpm tauri dev</code>
-            </div>
-          )}
-          {(data.configError || data.runtimeError) && (
-            <div className="banner danger">
-              <strong>
-                {data.configError ? "配置未加载" : "运行管理需要处理"}
-              </strong>
-              <span>{data.configError ?? data.runtimeError}</span>
-              {data.configError && (
-                <div className="button-row">
-                  <Button
-                    disabled={busy}
-                    onClick={() =>
-                      void work(async () => {
-                        await call("recover_config", { backup: true });
-                        await refresh();
-                      })
-                    }
-                  >
-                    恢复有效备份
-                  </Button>
-                  <Button
-                    disabled={busy}
-                    onClick={() =>
-                      setConfirm({
-                        title: "新建配置？",
-                        body: "损坏的原配置会另存保留，当前配置将重置为空。",
-                        label: "新建空配置",
-                        action: () =>
-                          void work(async () => {
-                            await call("recover_config", { backup: false });
-                            await refresh();
-                            loadTask(null);
-                          }),
-                      })
-                    }
-                  >
-                    新建空配置
-                  </Button>
-                  <Button onClick={reload}>重试加载</Button>
-                </div>
-              )}
-            </div>
-          )}
-          {data.runs
-            .filter((r) => r.status === "abnormal")
-            .map((r) => (
-              <div className="banner danger" key={r.id}>
-                <strong>需要核查的运行实例：{r.taskName}</strong>
-                <span>{r.message ?? "请确认旧实例结束后再运行。"}</span>
-                <div className="button-row">
-                  <Button
-                    disabled={busy}
-                    onClick={() =>
-                      void work(async () => {
-                        await call("cleanup_run", {
-                          runId: r.id,
-                          terminate: false,
-                        });
-                        await refresh();
-                      })
-                    }
-                  >
-                    重新核查
-                  </Button>
-                  <Button
-                    disabled={busy}
-                    onClick={() =>
-                      setConfirm({
-                        title: "清理遗留运行实例？",
-                        body: `将结束「${r.taskName}」仍存活的受管进程，并核查结束状态。`,
-                        label: "清理并核查",
-                        action: () =>
-                          void work(async () => {
-                            await call("cleanup_run", {
-                              runId: r.id,
-                              terminate: true,
-                            });
-                            await refresh();
-                          }),
-                      })
-                    }
-                  >
-                    清理并核查
-                  </Button>
-                </div>
-              </div>
-            ))}
-          {data.appError && <div className="banner info">{data.appError}</div>}
-          {error && (
-            <div role="alert" className="banner danger">
-              <span>{error}</span>
-              <Button
-                size="icon"
-                className="banner-close"
-                aria-label="关闭错误"
-                onClick={() => setError("")}
+          <div className="nav-caption">工作空间</div>
+          <nav>
+            {(["tasks", "files", "settings"] as Page[]).map((p) => (
+              <button
+                key={p}
+                className={page === p ? "nav-item selected" : "nav-item"}
+                onClick={() =>
+                  guarded(() => {
+                    setPage(p);
+                    if (p !== "tasks") loadTask(null);
+                  })
+                }
               >
-                <Icon name="close" />
-              </Button>
-            </div>
-          )}
-          {notice && (
-            <div role="status" className="banner success">
-              <Icon name="check" size={16} />
-              <span>{notice}</span>
-              <Button
-                size="icon"
-                className="banner-close"
-                aria-label="关闭提示"
-                onClick={() => setNotice("")}
-              >
-                <Icon name="close" />
-              </Button>
-            </div>
-          )}
-          {page === "tasks" && (
-            <>
-              <div className="metrics">
-                <MetricCard
-                  icon="tasks"
-                  label="全部任务"
-                  value={data.config.tasks.length}
-                  detail="个任务"
-                />
-                <MetricCard
-                  icon="play"
-                  label="运行中"
-                  value={data.runs.filter((r) => r.status === "running").length}
-                  detail="个运行实例"
-                />
-                <MetricCard
-                  icon="clock"
-                  label="需要关注"
-                  value={
-                    data.config.tasks.filter((t) =>
-                      ["failed", "abnormal"].includes(
-                        data.runs.find((r) => r.taskId === t.id)?.status ?? "",
-                      ),
-                    ).length
+                <Icon name={p} />
+                <span>
+                  {
+                    { tasks: "任务", files: "导入文件", settings: "应用设置" }[
+                      p
+                    ]
                   }
-                  detail="个任务"
-                />
-                <MetricCard
-                  icon="files"
-                  label="导入文件"
-                  value={data.config.files.length}
-                  detail="个本机副本"
-                />
+                </span>
+                {p === "tasks" && <b>{data.config.tasks.length}</b>}
+              </button>
+            ))}
+          </nav>
+          <div className="sidebar-bottom">
+            <div className="local-state">
+              <span className="live-dot" />
+              <span className="muted">{totalActive} 个运行实例</span>
+            </div>
+            <small>Script Hub · v0.1.0</small>
+          </div>
+        </aside>
+        <main
+          className="main-content"
+          inert={!!taskDialog || !!confirm || !!pendingConfig}
+        >
+          <header className="page-header" data-tauri-drag-region>
+            <div>
+              <div className="eyebrow">
+                SCRIPT HUB /{" "}
+                {
+                  {
+                    tasks: "WORKSPACE",
+                    files: "FILES",
+                    settings: "PREFERENCES",
+                  }[page]
+                }
               </div>
-              <div className="workspace">
-                <Card className="task-list">
-                  <div className="section-title">
-                    <h2>我的任务</h2>
-                    <div
-                      className={`task-search${searchOpen ? " expanded" : ""}`}
+              <h1>
+                {
+                  {
+                    tasks: "让本机任务，井然有序。",
+                    files: "管理你的导入文件。",
+                    settings: "按你的习惯工作。",
+                  }[page]
+                }
+              </h1>
+              <p>
+                {
+                  {
+                    tasks: "保存命令、管理运行，专注正在做的事。",
+                    files: "导入文件拥有独立副本，可供多个任务引用。",
+                    settings: "配置保存在用户主目录，随时可以直接编辑。",
+                  }[page]
+                }
+              </p>
+            </div>
+            {page === "tasks" && (
+              <Button
+                icon="plus"
+                variant="primary"
+                size="page"
+                disabled={!canCreateTask}
+                onClick={() => guarded(newTask)}
+              >
+                新增任务
+              </Button>
+            )}
+            {page === "files" && (
+              <Button
+                icon="plus"
+                variant="primary"
+                size="page"
+                disabled={busy || !desktop || !!data.configError}
+                onClick={() => void work(() => importFile())}
+              >
+                导入文件
+              </Button>
+            )}
+          </header>
+          <div className="page-body" key={page}>
+            {!desktop && (
+              <div className="banner info">
+                当前为浏览器界面预览。运行、文件和配置管理请使用桌面应用：
+                <code>pnpm tauri dev</code>
+              </div>
+            )}
+            {(data.configError || data.runtimeError) && (
+              <div className="banner danger">
+                <strong>
+                  {data.configError ? "配置未加载" : "运行管理需要处理"}
+                </strong>
+                <span>{data.configError ?? data.runtimeError}</span>
+                {data.configError && (
+                  <div className="button-row">
+                    <Button
+                      disabled={busy}
+                      onClick={() =>
+                        void work(async () => {
+                          await call("recover_config", { backup: true });
+                          await refresh();
+                        })
+                      }
                     >
-                      {searchOpen && (
-                        <input
-                          id="task-search"
-                          autoFocus
-                          type="search"
-                          aria-label="搜索任务"
-                          placeholder="搜索任务名称或命令…"
-                          value={query}
-                          onChange={(e) => setQuery(e.target.value)}
-                          onKeyDown={(e) => {
-                            if (e.key === "Escape") {
-                              e.preventDefault();
-                              setSearchOpen(false);
-                              setQuery("");
-                              searchToggleRef.current?.focus();
-                            }
-                          }}
-                        />
-                      )}
-                      <Button
-                        ref={searchToggleRef}
-                        type="button"
-                        size="icon"
-                        variant="muted-icon"
-                        className="task-search-toggle"
-                        aria-label={searchOpen ? "收起搜索" : "搜索任务"}
-                        title={searchOpen ? "收起搜索" : "搜索任务"}
-                        aria-expanded={searchOpen}
-                        aria-controls={searchOpen ? "task-search" : undefined}
-                        onClick={() => {
-                          setSearchOpen(!searchOpen);
-                          if (searchOpen) setQuery("");
-                        }}
-                      >
-                        <Icon
-                          name={searchOpen ? "close" : "search"}
-                          size={16}
-                        />
-                      </Button>
-                    </div>
+                      恢复有效备份
+                    </Button>
+                    <Button
+                      disabled={busy}
+                      onClick={() =>
+                        setConfirm({
+                          title: "新建配置？",
+                          body: "损坏的原配置会另存保留，当前配置将重置为空。",
+                          label: "新建空配置",
+                          action: () =>
+                            void work(async () => {
+                              await call("recover_config", { backup: false });
+                              await refresh();
+                              loadTask(null);
+                            }),
+                        })
+                      }
+                    >
+                      新建空配置
+                    </Button>
+                    <Button onClick={reload}>重试加载</Button>
                   </div>
-                  <div className="task-rows" role="list" aria-label="任务列表">
-                    {data.config.tasks
-                      .filter((t) =>
-                        `${t.name} ${JSON.stringify(t.command)}`
-                          .toLowerCase()
-                          .includes(query.toLowerCase()),
-                      )
-                      .map((task) => {
-                        const latestRun = data.runs.find(
-                          (r) => r.taskId === task.id,
-                        );
-                        return (
-                          <div
-                            className="task-row"
-                            role="listitem"
-                            key={task.id}
-                          >
-                            <div className="task-row-content">
-                              <div className="task-row-top">
-                                <span className="task-symbol">
-                                  <Icon name="terminal" size={16} />
-                                </span>
-                                <strong>{task.name}</strong>
-                                {task.autoStart && (
-                                  <span
-                                    title="任务自动启动"
-                                    className="auto-mark"
-                                  >
-                                    A
-                                  </span>
-                                )}
-                              </div>
-                              <code>
-                                {task.command.mode === "direct"
-                                  ? task.command.text
-                                  : task.command.parts
-                                      .map((p) =>
-                                        p.kind === "file"
-                                          ? data.config.files.find(
-                                              (f) => f.id === p.file_id,
-                                            )?.name
-                                          : p.value,
-                                      )
-                                      .join(" ")}
-                              </code>
-                            </div>
-                            <div className="task-row-bottom">
-                              <Badge status={latestRun?.status} />
-                              <span>
-                                {latestRun
-                                  ? duration(latestRun, clock)
-                                  : "等待首次运行"}
-                              </span>
-                            </div>
-                            <div className="task-row-actions button-row">
-                              <Button
-                                icon="edit"
-                                disabled={busy}
-                                onClick={() => openTaskDialog(task, "edit")}
-                                aria-label={`编辑 ${task.name}`}
-                              >
-                                编辑
-                              </Button>
-                              <Button
-                                icon="terminal"
-                                disabled={busy}
-                                onClick={() => openTaskDialog(task, "logs")}
-                                aria-label={`查看 ${task.name} 的日志`}
-                              >
-                                查看日志
-                              </Button>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    {data.config.tasks.length === 0 && (
-                      <div className="list-empty">
-                        <Icon name="tasks" size={30} />
-                        <strong>从第一个任务开始</strong>
-                        <p>一条命令，一处管理。</p>
+                )}
+              </div>
+            )}
+            {data.runs
+              .filter((r) => r.status === "abnormal")
+              .map((r) => (
+                <div className="banner danger" key={r.id}>
+                  <strong>需要核查的运行实例：{r.taskName}</strong>
+                  <span>{r.message ?? "请确认旧实例结束后再运行。"}</span>
+                  <div className="button-row">
+                    <Button
+                      disabled={busy}
+                      onClick={() =>
+                        void work(async () => {
+                          await call("cleanup_run", {
+                            runId: r.id,
+                            terminate: false,
+                          });
+                          await refresh();
+                        })
+                      }
+                    >
+                      重新核查
+                    </Button>
+                    <Button
+                      disabled={busy}
+                      onClick={() =>
+                        setConfirm({
+                          title: "清理遗留运行实例？",
+                          body: `将结束「${r.taskName}」仍存活的受管进程，并核查结束状态。`,
+                          label: "清理并核查",
+                          action: () =>
+                            void work(async () => {
+                              await call("cleanup_run", {
+                                runId: r.id,
+                                terminate: true,
+                              });
+                              await refresh();
+                            }),
+                        })
+                      }
+                    >
+                      清理并核查
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            {data.appError && (
+              <div className="banner info">{data.appError}</div>
+            )}
+            {error && (
+              <div role="alert" className="banner danger">
+                <span>{error}</span>
+                <Button
+                  size="icon"
+                  className="banner-close"
+                  aria-label="关闭错误"
+                  onClick={() => setError("")}
+                >
+                  <Icon name="close" />
+                </Button>
+              </div>
+            )}
+            {notice && (
+              <div role="status" className="banner success">
+                <Icon name="check" size={16} />
+                <span>{notice}</span>
+                <Button
+                  size="icon"
+                  className="banner-close"
+                  aria-label="关闭提示"
+                  onClick={() => setNotice("")}
+                >
+                  <Icon name="close" />
+                </Button>
+              </div>
+            )}
+            {page === "tasks" && (
+              <>
+                <div className="metrics">
+                  <MetricCard
+                    icon="tasks"
+                    label="全部任务"
+                    value={data.config.tasks.length}
+                    detail="个任务"
+                  />
+                  <MetricCard
+                    icon="play"
+                    label="运行中"
+                    value={
+                      data.runs.filter((r) => r.status === "running").length
+                    }
+                    detail="个运行实例"
+                  />
+                  <MetricCard
+                    icon="clock"
+                    label="需要关注"
+                    value={
+                      data.config.tasks.filter((t) =>
+                        ["failed", "abnormal"].includes(
+                          data.runs.find((r) => r.taskId === t.id)?.status ??
+                            "",
+                        ),
+                      ).length
+                    }
+                    detail="个任务"
+                  />
+                  <MetricCard
+                    icon="files"
+                    label="导入文件"
+                    value={data.config.files.length}
+                    detail="个本机副本"
+                  />
+                </div>
+                <div className="workspace">
+                  <Card className="task-list">
+                    <div className="section-title">
+                      <h2>我的任务</h2>
+                      <div
+                        className={`task-search${searchOpen ? " expanded" : ""}`}
+                      >
+                        {searchOpen && (
+                          <input
+                            id="task-search"
+                            autoFocus
+                            type="search"
+                            aria-label="搜索任务"
+                            placeholder="搜索任务名称或命令…"
+                            value={query}
+                            onChange={(e) => setQuery(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === "Escape") {
+                                e.preventDefault();
+                                setSearchOpen(false);
+                                setQuery("");
+                                searchToggleRef.current?.focus();
+                              }
+                            }}
+                          />
+                        )}
                         <Button
-                          icon="plus"
-                          disabled={!canCreateTask}
-                          onClick={newTask}
+                          ref={searchToggleRef}
+                          type="button"
+                          size="icon"
+                          variant="muted-icon"
+                          className="task-search-toggle"
+                          aria-label={searchOpen ? "收起搜索" : "搜索任务"}
+                          title={searchOpen ? "收起搜索" : "搜索任务"}
+                          aria-expanded={searchOpen}
+                          aria-controls={searchOpen ? "task-search" : undefined}
+                          onClick={() => {
+                            setSearchOpen(!searchOpen);
+                            if (searchOpen) setQuery("");
+                          }}
                         >
-                          新增任务
+                          <Icon
+                            name={searchOpen ? "close" : "search"}
+                            size={16}
+                          />
                         </Button>
                       </div>
-                    )}
-                    {data.config.tasks.length > 0 &&
-                      !data.config.tasks.some((t) =>
-                        `${t.name} ${JSON.stringify(t.command)}`
-                          .toLowerCase()
-                          .includes(query.toLowerCase()),
-                      ) && <p className="empty-small">没有匹配的任务</p>}
-                  </div>
-                </Card>
-              </div>
-            </>
-          )}
-          {page === "files" && (
-            <Card className="files-panel">
-              <div className="section-title">
-                <h2>
-                  导入文件{" "}
-                  <span className="muted">{data.config.files.length}</span>
-                </h2>
-                <span className="muted">独立身份 · 同名文件互不覆盖</span>
-              </div>
-              <p className="helper">
-                仅复制选择的普通文件。依赖与运行环境由你准备，可将任务工作目录指向现有项目。
-              </p>
-              {data.config.files.length ? (
-                <div className="file-list">
-                  {data.config.files.map((file) => {
-                    const refs = data.config.tasks.filter(
-                      (t) =>
-                        t.command.mode === "composed" &&
-                        t.command.parts.some(
-                          (p) => p.kind === "file" && p.file_id === file.id,
-                        ),
-                    );
-                    return (
-                      <div className="file-row" key={file.id}>
-                        <div className="file-icon">
-                          <Icon name="files" size={22} />
-                        </div>
-                        <div className="file-info">
-                          <strong>{file.name}</strong>
-                          <code>{file.id}</code>
-                          <span>
-                            {refs.length
-                              ? `引用任务：${refs.map((t) => t.name).join("、")}`
-                              : "尚无任务引用"}
-                          </span>
-                        </div>
-                        <div className="button-row">
-                          <Button onClick={() => openDirectory(file.id)}>
-                            所在目录
-                          </Button>
+                    </div>
+                    <div
+                      className="task-rows"
+                      role="list"
+                      aria-label="任务列表"
+                    >
+                      {data.config.tasks
+                        .filter((t) =>
+                          `${t.name} ${JSON.stringify(t.command)}`
+                            .toLowerCase()
+                            .includes(query.toLowerCase()),
+                        )
+                        .map((task) => {
+                          const latestRun = data.runs.find(
+                            (r) => r.taskId === task.id,
+                          );
+                          return (
+                            <div
+                              className="task-row"
+                              role="listitem"
+                              key={task.id}
+                            >
+                              <div className="task-row-content">
+                                <div className="task-row-top">
+                                  <span className="task-symbol">
+                                    <Icon name="terminal" size={16} />
+                                  </span>
+                                  <strong>{task.name}</strong>
+                                  {task.autoStart && (
+                                    <span
+                                      title="任务自动启动"
+                                      className="auto-mark"
+                                    >
+                                      A
+                                    </span>
+                                  )}
+                                </div>
+                                <code>
+                                  {task.command.mode === "direct"
+                                    ? task.command.text
+                                    : task.command.parts
+                                        .map((p) =>
+                                          p.kind === "file"
+                                            ? data.config.files.find(
+                                                (f) => f.id === p.file_id,
+                                              )?.name
+                                            : p.value,
+                                        )
+                                        .join(" ")}
+                                </code>
+                              </div>
+                              <div className="task-row-bottom">
+                                <Badge status={latestRun?.status} />
+                                <span>
+                                  {latestRun
+                                    ? duration(latestRun, clock)
+                                    : "等待首次运行"}
+                                </span>
+                              </div>
+                              <div className="task-row-actions button-row">
+                                <Button
+                                  icon="edit"
+                                  disabled={busy}
+                                  onClick={() => openTaskDialog(task, "edit")}
+                                  aria-label={`编辑 ${task.name}`}
+                                >
+                                  编辑
+                                </Button>
+                                <Button
+                                  icon="terminal"
+                                  disabled={busy}
+                                  onClick={() => openTaskDialog(task, "logs")}
+                                  aria-label={`查看 ${task.name} 的日志`}
+                                >
+                                  查看日志
+                                </Button>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      {data.config.tasks.length === 0 && (
+                        <div className="list-empty">
+                          <Icon name="tasks" size={30} />
+                          <strong>从第一个任务开始</strong>
+                          <p>一条命令，一处管理。</p>
                           <Button
-                            disabled={busy}
-                            onClick={() =>
-                              setConfirm({
-                                title: "替换导入文件？",
-                                body: `「${file.name}」的内容将被替换，保留原有存储路径和任务引用。`,
-                                label: "选择替换文件",
-                                action: () =>
-                                  void work(() => importFile(file.id)),
-                              })
-                            }
+                            icon="plus"
+                            disabled={!canCreateTask}
+                            onClick={newTask}
                           >
-                            替换
+                            新增任务
                           </Button>
-                          <Button
-                            icon="trash"
-                            aria-label={`删除文件 ${file.name}`}
-                            disabled={busy || refs.length > 0}
-                            onClick={() =>
-                              setConfirm({
-                                title: "删除导入文件？",
-                                body: `将删除软件管理的「${file.name}」副本。`,
-                                label: "删除文件",
-                                action: () =>
-                                  void work(async () => {
-                                    await call("delete_file", {
-                                      fileId: file.id,
-                                    });
-                                    await refresh();
-                                  }),
-                              })
-                            }
-                          />
                         </div>
-                      </div>
-                    );
-                  })}
+                      )}
+                      {data.config.tasks.length > 0 &&
+                        !data.config.tasks.some((t) =>
+                          `${t.name} ${JSON.stringify(t.command)}`
+                            .toLowerCase()
+                            .includes(query.toLowerCase()),
+                        ) && <p className="empty-small">没有匹配的任务</p>}
+                    </div>
+                  </Card>
                 </div>
-              ) : (
-                <div className="large-empty">
-                  <Icon name="files" size={40} />
-                  <h2>把文件放进工作空间</h2>
-                  <p>
-                    Python、JavaScript 或其他普通文件，都可以导入并供任务引用。
-                  </p>
-                  <Button
-                    icon="plus"
-                    variant="primary"
-                    disabled={busy || !desktop}
-                    onClick={() => void work(() => importFile())}
-                  >
-                    选择文件导入
-                  </Button>
+              </>
+            )}
+            {page === "files" && (
+              <Card className="files-panel">
+                <div className="section-title">
+                  <h2>
+                    导入文件{" "}
+                    <span className="muted">{data.config.files.length}</span>
+                  </h2>
+                  <span className="muted">独立身份 · 同名文件互不覆盖</span>
                 </div>
-              )}
-            </Card>
-          )}
-          {page === "settings" && (
-            <div className="settings-grid">
-              <Card className="settings-card">
-                <h2>启动与常驻</h2>
-                <label className="setting-row">
-                  <div>
-                    <strong>应用开机启动</strong>
-                    <p>当前用户登录系统后隐藏到托盘，仍会触发任务自动启动。</p>
+                <p className="helper">
+                  仅复制选择的普通文件。依赖与运行环境由你准备，可将任务工作目录指向现有项目。
+                </p>
+                {data.config.files.length ? (
+                  <div className="file-list">
+                    {data.config.files.map((file) => {
+                      const refs = data.config.tasks.filter(
+                        (t) =>
+                          t.command.mode === "composed" &&
+                          t.command.parts.some(
+                            (p) => p.kind === "file" && p.file_id === file.id,
+                          ),
+                      );
+                      return (
+                        <div className="file-row" key={file.id}>
+                          <div className="file-icon">
+                            <Icon name="files" size={22} />
+                          </div>
+                          <div className="file-info">
+                            <strong>{file.name}</strong>
+                            <code>{file.id}</code>
+                            <span>
+                              {refs.length
+                                ? `引用任务：${refs.map((t) => t.name).join("、")}`
+                                : "尚无任务引用"}
+                            </span>
+                          </div>
+                          <div className="button-row">
+                            <Button onClick={() => openDirectory(file.id)}>
+                              所在目录
+                            </Button>
+                            <Button
+                              disabled={busy}
+                              onClick={() =>
+                                setConfirm({
+                                  title: "替换导入文件？",
+                                  body: `「${file.name}」的内容将被替换，保留原有存储路径和任务引用。`,
+                                  label: "选择替换文件",
+                                  action: () =>
+                                    void work(() => importFile(file.id)),
+                                })
+                              }
+                            >
+                              替换
+                            </Button>
+                            <Button
+                              icon="trash"
+                              aria-label={`删除文件 ${file.name}`}
+                              disabled={busy || refs.length > 0}
+                              onClick={() =>
+                                setConfirm({
+                                  title: "删除导入文件？",
+                                  body: `将删除软件管理的「${file.name}」副本。`,
+                                  label: "删除文件",
+                                  action: () =>
+                                    void work(async () => {
+                                      await call("delete_file", {
+                                        fileId: file.id,
+                                      });
+                                      await refresh();
+                                    }),
+                                })
+                              }
+                            />
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
-                  <input
-                    type="checkbox"
-                    className="switch"
-                    checked={data.config.settings.launchAtLogin}
-                    disabled={busy || !desktop || !!data.configError}
-                    onChange={(e) =>
-                      void work(async () => {
-                        await persist({
-                          ...data.config,
-                          settings: { launchAtLogin: e.target.checked },
-                        });
+                ) : (
+                  <div className="large-empty">
+                    <Icon name="files" size={40} />
+                    <h2>把文件放进工作空间</h2>
+                    <p>
+                      Python、JavaScript
+                      或其他普通文件，都可以导入并供任务引用。
+                    </p>
+                    <Button
+                      icon="plus"
+                      variant="primary"
+                      disabled={busy || !desktop}
+                      onClick={() => void work(() => importFile())}
+                    >
+                      选择文件导入
+                    </Button>
+                  </div>
+                )}
+              </Card>
+            )}
+            {page === "settings" && (
+              <div className="settings-grid">
+                <Card className="settings-card">
+                  <h2>启动与常驻</h2>
+                  <label className="setting-row">
+                    <div>
+                      <strong>应用开机启动</strong>
+                      <p>
+                        当前用户登录系统后隐藏到托盘，仍会触发任务自动启动。
+                      </p>
+                    </div>
+                    <input
+                      type="checkbox"
+                      className="switch"
+                      checked={data.config.settings.launchAtLogin}
+                      disabled={busy || !desktop || !!data.configError}
+                      onChange={(e) =>
+                        void work(async () => {
+                          await persist({
+                            ...data.config,
+                            settings: { launchAtLogin: e.target.checked },
+                          });
+                        })
+                      }
+                    />
+                  </label>
+                  <div className="setting-row">
+                    <div>
+                      <strong>关闭窗口时隐藏到托盘</strong>
+                      <p>
+                        运行中的任务继续执行。明确退出会先停止所有受管进程。
+                      </p>
+                    </div>
+                    <Badge status="succeeded">始终开启</Badge>
+                  </div>
+                  <Button
+                    variant="subtle-danger"
+                    className="settings-quit"
+                    disabled={busy || !desktop}
+                    onClick={() =>
+                      setConfirm({
+                        title: "停止任务并退出？",
+                        body: "将先请求所有任务正常结束，最多等待 5 秒，再强制结束受管进程树。",
+                        label: "停止任务并退出",
+                        action: () =>
+                          void work(async () => {
+                            await call("quit_app");
+                          }),
                       })
                     }
-                  />
-                </label>
-                <div className="setting-row">
-                  <div>
-                    <strong>关闭窗口时隐藏到托盘</strong>
-                    <p>运行中的任务继续执行。明确退出会先停止所有受管进程。</p>
+                  >
+                    停止任务并退出软件
+                  </Button>
+                </Card>
+                <Card className="settings-card">
+                  <h2>配置与数据</h2>
+                  <label className="field">
+                    <span>数据根目录</span>
+                    <code className="path-box">{data.root}</code>
+                  </label>
+                  <p className="helper">
+                    配置为 config.json，上一个有效版本为
+                    config.backup.json。导入文件、任务工作目录和日志分别保存。
+                  </p>
+                  <div className="button-row">
+                    <Button
+                      icon="files"
+                      disabled={!desktop}
+                      onClick={() => openDirectory()}
+                    >
+                      打开配置目录
+                    </Button>
+                    <Button
+                      icon="refresh"
+                      disabled={busy || !desktop || totalActive > 0}
+                      onClick={() => guarded(reload)}
+                    >
+                      重新加载配置
+                    </Button>
                   </div>
-                  <Badge status="succeeded">始终开启</Badge>
-                </div>
-                <Button
-                  variant="subtle-danger"
-                  className="settings-quit"
-                  disabled={busy || !desktop}
-                  onClick={() =>
-                    setConfirm({
-                      title: "停止任务并退出？",
-                      body: "将先请求所有任务正常结束，最多等待 5 秒，再强制结束受管进程树。",
-                      label: "停止任务并退出",
-                      action: () =>
-                        void work(async () => {
-                          await call("quit_app");
-                        }),
-                    })
-                  }
-                >
-                  停止任务并退出软件
-                </Button>
-              </Card>
-              <Card className="settings-card">
-                <h2>配置与数据</h2>
-                <label className="field">
-                  <span>数据根目录</span>
-                  <code className="path-box">{data.root}</code>
-                </label>
-                <p className="helper">
-                  配置为 config.json，上一个有效版本为
-                  config.backup.json。导入文件、任务工作目录和日志分别保存。
-                </p>
-                <div className="button-row">
-                  <Button
-                    icon="files"
-                    disabled={!desktop}
-                    onClick={() => openDirectory()}
-                  >
-                    打开配置目录
-                  </Button>
-                  <Button
-                    icon="refresh"
-                    disabled={busy || !desktop || totalActive > 0}
-                    onClick={() => guarded(reload)}
-                  >
-                    重新加载配置
-                  </Button>
-                </div>
-                <p className="helper">
-                  全部任务停止后才可重新加载；重新加载不会触发任务自动启动。
-                </p>
-              </Card>
-              <Card className="settings-card">
-                <h2>运行与历史</h2>
-                <div className="setting-row">
-                  <span>每个任务保留的运行记录</span>
-                  <strong>20 次</strong>
-                </div>
-                <div className="setting-row">
-                  <span>每次运行的输出上限</span>
-                  <strong>10 MB</strong>
-                </div>
-                <div className="setting-row">
-                  <span>正常停止等待时间</span>
-                  <strong>5 秒</strong>
-                </div>
-                <p className="helper">
-                  不自动安装运行环境与依赖，不自动重启失败任务。任务启动失败的具体原因会保存在运行记录中。
-                </p>
-              </Card>
-            </div>
-          )}
-        </div>
-      </main>
+                  <p className="helper">
+                    全部任务停止后才可重新加载；重新加载不会触发任务自动启动。
+                  </p>
+                </Card>
+                <Card className="settings-card">
+                  <h2>运行与历史</h2>
+                  <div className="setting-row">
+                    <span>每个任务保留的运行记录</span>
+                    <strong>20 次</strong>
+                  </div>
+                  <div className="setting-row">
+                    <span>每次运行的输出上限</span>
+                    <strong>10 MB</strong>
+                  </div>
+                  <div className="setting-row">
+                    <span>正常停止等待时间</span>
+                    <strong>5 秒</strong>
+                  </div>
+                  <p className="helper">
+                    不自动安装运行环境与依赖，不自动重启失败任务。任务启动失败的具体原因会保存在运行记录中。
+                  </p>
+                </Card>
+              </div>
+            )}
+          </div>
+        </main>
+      </div>
       <Modal
         open={!!taskDialog}
         titleId="task-dialog-title"
@@ -1597,7 +1640,7 @@ function App() {
       <Modal
         open={!!confirm}
         titleId="confirm-title"
-        onClose={() => setConfirm(null)}
+        onClose={closeConfirm}
         backdropClose
         active={!pendingConfig}
       >
@@ -1606,7 +1649,7 @@ function App() {
             <h2 id="confirm-title">{confirm.title}</h2>
             <p>{confirm.body}</p>
             <div className="button-row">
-              <Button autoFocus onClick={() => setConfirm(null)}>
+              <Button autoFocus onClick={closeConfirm}>
                 取消
               </Button>
               <Button
@@ -1626,7 +1669,7 @@ function App() {
       <Modal
         open={!!pendingConfig}
         titleId="conflict-title"
-        onClose={() => setPendingConfig(null)}
+        onClose={closePendingConfig}
       >
         {pendingConfig && (
           <>

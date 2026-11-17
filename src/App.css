@@ -147,8 +147,8 @@ small {
   color: #777f95;
 }
 .app-shell {
-  display: grid;
-  grid-template-columns: 200px minmax(0, 1fr);
+  display: flex;
+  flex-direction: column;
   width: 100%;
   height: 100%;
   min-height: 0;
@@ -158,8 +158,96 @@ small {
   backdrop-filter: blur(24px);
   overflow: hidden;
 }
+.window-titlebar {
+  width: 100%;
+  box-sizing: border-box;
+  height: 40px;
+  min-height: 40px;
+  max-height: 40px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding: 0 10px 0 16px;
+  user-select: none;
+  -webkit-user-select: none;
+  background: transparent;
+  border-bottom: 0;
+  cursor: default;
+  z-index: 50;
+}
+.window-titlebar-drag-area {
+  flex: 1 1 auto;
+  min-width: 20px;
+  height: 100%;
+}
+.window-controls {
+  margin-left: auto !important;
+  display: flex !important;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+  -webkit-app-region: no-drag;
+  app-region: no-drag;
+}
+.window-control-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 30px;
+  padding: 0;
+  margin: 0;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: transparent;
+  color: #777f95;
+  cursor: pointer;
+  box-shadow: none;
+  -webkit-app-region: no-drag;
+  app-region: no-drag;
+  pointer-events: auto;
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease,
+    color 0.15s ease,
+    box-shadow 0.15s ease,
+    transform 0.1s ease;
+}
+.window-control-btn:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.75);
+  border-color: rgba(115, 121, 153, 0.16);
+  color: #202437;
+  box-shadow: 0 1px 4px rgba(32, 36, 55, 0.05);
+}
+.window-control-btn:active:not(:disabled) {
+  transform: translateY(1px);
+  background: rgba(255, 255, 255, 0.95);
+}
+.window-control-btn:focus-visible {
+  outline: 2px solid #5688ea80;
+  outline-offset: 1px;
+}
+.window-control-btn.close:hover:not(:disabled) {
+  background: #ee5a52;
+  border-color: #e54b43;
+  color: #ffffff;
+  box-shadow: 0 2px 8px rgba(238, 90, 82, 0.35);
+}
+.window-control-btn.close:active:not(:disabled) {
+  background: #d74840;
+  border-color: #cc3e36;
+  color: #ffffff;
+}
+.app-body {
+  display: grid;
+  grid-template-columns: 200px minmax(0, 1fr);
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
 .sidebar {
-  padding: 22px 16px 18px;
+  padding: 8px 16px 18px;
   border-right: 1px solid #73799913;
   display: flex;
   flex-direction: column;
@@ -173,7 +261,7 @@ small {
   font-size: 18px;
   font-weight: 700;
   letter-spacing: -0.03em;
-  margin: 0 5px 28px;
+  margin: 0 5px 24px;
 }
 .brand small {
   display: block;
@@ -284,7 +372,7 @@ nav {
 }
 .main-content {
   --page-padding-x: 22px;
-  --page-padding-top: 22px;
+  --page-padding-top: 0px;
   --page-padding-bottom: 24px;
   --page-header-gap: 18px;
   display: flex;
@@ -306,11 +394,18 @@ nav {
 }
 .page-header {
   flex-shrink: 0;
-  padding: var(--page-padding-top) var(--page-padding-x) var(--page-header-gap);
+  padding: 6px var(--page-padding-x) var(--page-header-gap);
   display: flex;
   justify-content: space-between;
   align-items: center;
   gap: 16px;
+}
+.page-header button,
+.page-header a,
+.page-header input,
+.brand-icon {
+  -webkit-app-region: no-drag;
+  app-region: no-drag;
 }
 .eyebrow {
   font-size: 12px;
@@ -1254,7 +1349,7 @@ nav {
   }
 }
 @media (max-width: 1200px) {
-  .app-shell {
+  .app-body {
     grid-template-columns: 180px minmax(0, 1fr);
   }
   .sidebar {
@@ -1274,7 +1369,7 @@ nav {
     left: -12px;
   }
   .main-content {
-    --page-padding-top: 20px;
+    --page-padding-top: 0px;
     --page-padding-x: 20px;
     --page-padding-bottom: 20px;
   }
@@ -1328,7 +1423,7 @@ nav {
   }
 }
 @media (max-width: 900px) {
-  .app-shell {
+  .app-body {
     grid-template-columns: 180px minmax(0, 1fr);
   }
   .brand {
@@ -1342,7 +1437,7 @@ nav {
     height: 30px;
   }
   .main-content {
-    --page-padding-top: 18px;
+    --page-padding-top: 0px;
     --page-padding-x: 15px;
     --page-padding-bottom: 20px;
   }
@@ -1424,7 +1519,7 @@ nav {
   }
 }
 @media (max-width: 760px) {
-  .app-shell {
+  .app-body {
     grid-template-columns: minmax(0, 1fr);
     grid-template-rows: auto minmax(0, 1fr);
   }
@@ -1465,7 +1560,7 @@ nav {
     display: none;
   }
   .main-content {
-    --page-padding-top: 16px;
+    --page-padding-top: 0px;
     --page-padding-x: 16px;
     --page-padding-bottom: 20px;
     --page-header-gap: 16px;
