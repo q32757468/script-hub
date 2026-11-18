@@ -51,7 +51,16 @@ cargo fmt --manifest-path src-tauri/Cargo.toml --check
 pnpm tauri build
 ```
 
-安装包输出位于 `src-tauri/target/release/bundle/`。GitHub Actions 在 Windows 与 Linux 上执行前端构建、领域测试和 Rust 检查；桌面交互的人工验收清单位于实现说明中。
+本地构建的安装包输出位于 `src-tauri/target/release/bundle/`。桌面交互的人工验收清单位于实现说明中。
+
+## 发布 Windows 安装包
+
+更新 `src-tauri/tauri.conf.json` 中的版本号并提交后，推送对应的 `v*` 标签，例如 `v0.1.0`。GitHub Actions 会创建对应的 GitHub Release，并上传一个 Windows x64 的 `*-setup.exe` 安装包。
+
+```sh
+git tag v0.1.0
+git push origin v0.1.0
+```
 
 ## 数据
 
