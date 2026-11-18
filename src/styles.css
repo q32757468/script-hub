@@ -3,12 +3,17 @@
 
 @theme {
   --color-ink: #202437;
-  --color-muted: #878ca1;
-  --color-canvas: #edf2fd;
-  --color-blue: #5688ea;
-  --color-blue-deep: #3768c6;
+  --color-muted: #5e6980;
+  --color-canvas: #eef0fa;
+  --color-blue: #4f5fbe;
+  --color-blue-deep: #3e4eaa;
+  --color-blue-soft: #eceefa;
+  --color-blue-border: #b9c1e9;
   --color-mint: #68c7ae;
   --color-coral: #ee937e;
+  --color-status-success: #246b56;
+  --color-status-warning: #825812;
+  --color-status-danger: #984c3e;
   --color-glass: #ffffff78;
   --color-glass-edge: #ffffff9c;
   --radius-card: 14px;

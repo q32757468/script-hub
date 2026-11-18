@@ -3,13 +3,13 @@ import { statusText } from "../../domain";
 import { classes } from "./classNames";
 
 const badgeVariants: Record<string, string> = {
-  idle: "bg-[#e9edf469] text-[#858c9e]",
-  running: "bg-[#68c7ae18] text-[#38967b]",
-  succeeded: "bg-[#68c7ae18] text-[#38967b]",
-  failed: "bg-[#ee937e22] text-[#bd705f]",
-  abnormal: "bg-[#ee937e22] text-[#bd705f]",
-  starting: "bg-[#f0d8aa3b] text-[#b08644]",
-  stopping: "bg-[#f0d8aa3b] text-[#b08644]",
+  idle: "bg-[#e9edf469] text-muted",
+  running: "bg-[#68c7ae18] text-status-success",
+  succeeded: "bg-[#68c7ae18] text-status-success",
+  failed: "bg-[#ee937e22] text-status-danger",
+  abnormal: "bg-[#ee937e22] text-status-danger",
+  starting: "bg-[#f0d8aa3b] text-status-warning",
+  stopping: "bg-[#f0d8aa3b] text-status-warning",
 };
 
 export function Badge({

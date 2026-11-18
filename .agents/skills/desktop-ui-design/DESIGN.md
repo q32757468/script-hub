@@ -3,10 +3,12 @@ version: alpha
 name: Frosted Glass Design System
 colors:
   ink: "#202437"
-  muted: "#878CA1"
-  canvas-base: "#EDF2FD"
-  blue: "#5688EA"
-  blue-deep: "#3768C6"
+  muted: "#5E6980"
+  canvas-base: "#EEF0FA"
+  blue: "#4F5FBE"
+  blue-deep: "#3E4EAA"
+  blue-soft: "#ECEEFA"
+  blue-border: "#B9C1E9"
   mint: "#68C7AE"
   coral: "#EE937E"
   glass: "rgba(255, 255, 255, 0.63)"
@@ -89,8 +91,10 @@ The canvas uses layered blue, mint, and warm coral radial gradients over `canvas
 
 - **Ink (`{colors.ink}`):** Main headings, values, and high-priority labels.
 - **Muted (`{colors.muted}`):** Supporting copy and metadata. Preserve readable contrast on glass surfaces.
-- **Blue (`{colors.blue}`):** Primary accent for active controls, chart data, and progress.
+- **Blue (`{colors.blue}`):** Indigo accent for active controls, chart data, and progress.
 - **Blue deep (`{colors.blue-deep}`):** Blue text on pale backgrounds.
+- **Blue soft (`{colors.blue-soft}`):** Pale fill for informational notes and accent icons.
+- **Blue border (`{colors.blue-border}`):** Outline for accent surfaces and hovered controls.
 - **Mint (`{colors.mint}`):** Positive progress and completed-work accents.
 - **Coral (`{colors.coral}`):** Warm secondary accent for time and review states.
 - **Glass (`{colors.glass}`) and glass strong (`{colors.glass-strong}`):** Translucent surfaces; use the stronger value for selected or foreground controls.
