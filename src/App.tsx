@@ -33,6 +33,7 @@ function App() {
     root: desktop ? "" : emptySnapshot.root,
   });
   const [page, setPage] = useState<Page>("tasks");
+  const isSettingsPage = page === "settings";
   const [selected, setSelected] = useState<string | null>(null);
   const [draft, setDraft] = useState<Task | null>(null);
   const [baseline, setBaseline] = useState("");
@@ -40,7 +41,8 @@ function App() {
   const [query, setQuery] = useState("");
   const [searchOpen, setSearchOpen] = useState(false);
   const searchToggleRef = useRef<HTMLButtonElement>(null);
-  const [busy, setBusy] = useState(false);
+  const [working, setWorking] = useState(false);
+  const busy = working && !isSettingsPage;
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [pendingConfig, setPendingConfig] = useState<Config | null>(null);
@@ -97,7 +99,7 @@ function App() {
     setOutput([]);
   };
   const work = async (action: () => Promise<void>) => {
-    setBusy(true);
+    if (!isSettingsPage) setWorking(true);
     setError("");
     setNotice("");
     try {
@@ -107,7 +109,7 @@ function App() {
         setPendingConfig((current) => current ?? clone(data.config));
       setError(String(e));
     } finally {
-      setBusy(false);
+      if (!isSettingsPage) setWorking(false);
     }
   };
   useEffect(() => {
@@ -835,7 +837,7 @@ function App() {
                 )}
               </Card>
             )}
-            {page === "settings" && (
+            {isSettingsPage && (
               <div className="settings-grid">
                 <Card className="settings-card">
                   <h2>启动与常驻</h2>
@@ -850,30 +852,38 @@ function App() {
                       type="checkbox"
                       className="switch"
                       checked={data.config.settings.launchAtLogin}
-                      disabled={busy || !desktop || !!data.configError}
-                      onChange={(e) =>
-                        void work(async () => {
-                          await persist({
-                            ...data.config,
-                            settings: { launchAtLogin: e.target.checked },
-                          });
-                        })
-                      }
+                      disabled={!desktop || !!data.configError}
+                      onChange={(event) => {
+                        const launchAtLogin = event.currentTarget.checked;
+                        void work(
+                          () =>
+                            persist({
+                              ...data.config,
+                              settings: { launchAtLogin },
+                            }),
+                        );
+                      }}
                     />
                   </label>
-                  <div className="setting-row">
+                  <label className="setting-row">
                     <div>
                       <strong>关闭窗口时隐藏到托盘</strong>
                       <p>
                         运行中的任务继续执行。明确退出会先停止所有受管进程。
                       </p>
                     </div>
-                    <Badge status="succeeded">始终开启</Badge>
-                  </div>
+                    <input
+                      type="checkbox"
+                      role="switch"
+                      className="switch"
+                      checked
+                      disabled
+                    />
+                  </label>
                   <Button
                     variant="subtle-danger"
                     className="settings-quit"
-                    disabled={busy || !desktop}
+                    disabled={!desktop}
                     onClick={() =>
                       setConfirm({
                         title: "停止任务并退出？",
@@ -909,7 +919,7 @@ function App() {
                     </Button>
                     <Button
                       icon="refresh"
-                      disabled={busy || !desktop || totalActive > 0}
+                      disabled={!desktop || totalActive > 0}
                       onClick={() => guarded(reload)}
                     >
                       重新加载配置

@@ -1207,6 +1207,10 @@ nav {
 .switch:checked {
   background: var(--color-blue);
 }
+.switch:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
 .switch:before {
   content: "";
   position: absolute;
